@@ -111,56 +111,63 @@ for filename in listdir(newpath):
     else:
       train_dict[word]["after"][tag].append("")
 
-    # remove duplicates
-    list(set(train_dict[word]["before"][tag]))
-    list(set(train_dict[word]["after"][tag]))
+    # not sure if we should remove duplicates
+    # # remove duplicates
+    # list(set(train_dict[word]["before"][tag]))
+    # list(set(train_dict[word]["after"][tag]))
 
 # sequence tagger
-test_private = {}
-test_public = {}
-path_private = "nlp_project2_uncertainty/test-private"
-path_public = "nlp_project2_uncertainty/test-public"
-for filename in listdir(path_public):
-  file = open(path_public + "/" + filename, "r")
-  test_public[filename] = {}
-  lines = file.readlines()
-  for i in range(len(lines)):
-    line = lines[i]
-    # check if newline
-    if line != "\n":
-      word = line.split()[0] + " " + line.split()[1]
+def tagLines(path):
+  test = {}
+  for filename in listdir(path):
+    file = open(path + "/" + filename, "r")
+    test[filename] = {}
+    lines = file.readlines()
+    for i in range(len(lines)):
+      line = lines[i]
+      # check if newline
+      if line != "\n":
+        word = line.split()[0] + " " + line.split()[1]
 
-      if word in train_dict:
-        before_words = train_dict[word]["before"]
-        after_words = train_dict[word]["after"]
+        if word in train_dict:
+          before_words = train_dict[word]["before"]
+          after_words = train_dict[word]["after"]
 
-        if i > 0 and lines[i-1] != "\n":
-          preceding = lines[i-1].split()[0]
+          if i > 0 and lines[i-1] != "\n":
+            preceding = lines[i-1].split()[0]
+          else:
+            preceding = ""
+          if i < len(lines) - 2 and lines[i+1] != "\n":
+            following = lines[i+1].split()[0]
+          else:
+            following = ""
+
+          b_count = before_words["B"].count(preceding) + after_words["B"].count(following)
+          i_count = before_words["I"].count(preceding) + after_words["I"].count(following)
+          o_count = before_words["O"].count(preceding) + after_words["O"].count(following)
+
+          if b_count > i_count:
+            tag = "B"
+          elif b_count > o_count:
+            tag = "B"
+          elif i_count > o_count:
+            tag = "I"
+          else:
+            tag = "O"
+
         else:
-          preceding = ""
-        if i < len(lines) - 2 and lines[i+1] != "\n":
-          following = lines[i+1].split()[0]
-        else:
-          following = ""
-
-        b_count = before_words["B"].count(preceding) + after_words["B"].count(following)
-        i_count = before_words["I"].count(preceding) + after_words["I"].count(following)
-        o_count = before_words["O"].count(preceding) + after_words["O"].count(following)
-
-        if b_count > i_count:
-          tag = "B"
-        elif b_count > o_count:
-          tag = "B"
-        elif i_count > o_count:
-          tag = "I"
-        else:
+          # todo: handle unknown words
+          # print word + " not in train_dict... giving it tag O"
           tag = "O"
 
-      else:
-        # todo: handle unknown words
-        # print word + " not in train_dict... giving it tag O"
-        tag = "O"
+      test[filename][i] = tag
 
-    test_public[filename][i] = tag
+    # to see all counts, uncomment below line
+    # print(filename + "\t|\t" + str(test[filename].values().count("B")) + "\t|\t" + str(test[filename].values().count("I")) + "\t|\t" + str(test[filename].values().count("O")))
 
-  # print("For file " + filename + ", there are " + str(test_public[filename].values().count("B")) + " B-cue, " + str(test_public[filename].values().count("I")) + " I-cue, and " + str(test_public[filename].values().count("O") + " O."))
+path_private = "nlp_project2_uncertainty/test-private"
+path_public = "nlp_project2_uncertainty/test-public"
+# uncomment below line plus the last line in the tagLines function to see a table of BIO counts
+# print("filename\t|\tB\t|\tI\t|\tO")
+test_private = tagLines(path_private)
+test_public = tagLines(path_public)
