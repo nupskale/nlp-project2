@@ -2,6 +2,7 @@ from os import listdir
 import accuracy_metrics as am
 
 """
+THE LOGIC:
 P(t1,...,tn | w1,...,wn)
 
   P(t1,...,tn) * P(w1,...,wn | t1,...,tn)
@@ -17,6 +18,22 @@ where P(ti | ti-1) is the transition probability
 and P(wi | ti) is the lexical generation probability
 """
 
+"""
+returns:
+  w_prob: dictionary of P(w_i | t_i) where w_i is a word, and t_i is the tag for w_i
+          access these values by calling w_prob[word][tag]
+  t_prob: dictionary of P(t_i | t_i-1) where t_i is a tag, and t_(i-1) is the tag that comes immediately before t_i
+          access these values by calling t_prob[tag][prev_tag]
+arguments:
+  path: this should always be the training path
+  testing_list: an optional argument. The default is the empty list, so if you just call getWordTransitionProbabilities(path),
+                the file list that will be iterated over will be the files in the path.
+                This option is available for testing accuracy; meaning, you can iterate over a different file list. Just provide
+                a list of these file names (and the path has to match the filename, meaning: path + "/" + testing_lst[i] will return a valid file)
+  usePos: another optional argument. The default is true, meaning the w_i token in the probabilities will incorporate the word and the part of speech
+          if you do not want to include part of speech and only use the word, then call getWordTransitionProbabilities(path, usePos = False)
+          else, call getWordTransitionProbabilities(path)
+"""
 def getWordAndTransitionProbabilities(path, testing_lst = [], usePos = True):
   # get counts of transitions and of words
   w_count = {}
@@ -67,8 +84,8 @@ def getWordAndTransitionProbabilities(path, testing_lst = [], usePos = True):
   return w_prob, t_prob
 
 """
-#P(t1...tn | w1...wn) = multiply, from 1 to n, P(ti | ti-1) * P(wi | ti)
-we essentially want to see which probability is highest for the three possible tn values: "B", "I", and "O"
+A Helper Function
+We essentially want to see which probability is highest for the three possible tn values: "B", "I", and "O"
 """
 def computeTagProbabilities(assigned_tags, w_prob, t_prob, line, i, usePos = True):
   # check for index out of range (meaning first word), or stop if line[i] is end of sentence
@@ -109,7 +126,19 @@ def computeTagProbabilities(assigned_tags, w_prob, t_prob, line, i, usePos = Tru
     i -= 1
   return assigned_tags
 
-
+"""
+Tag the lines!
+returns:
+  test: a nested dictionary where the first layer is a dictionary where the keys are filenames and the values
+        are a dictionary. This second layer dictionary has the keys equal to the index of the line, and the value
+        is the tag
+arguments:
+  w_prob: word probability
+  t_prob: transition probability (tag probability)
+  path: filepath used to determine which files to tag
+  testing_lst: optional argument, used for testing if testing_lst != []
+  usePos: tells the function if we want to use part of speech AND word, or just word
+"""
 def tagLines(w_prob, t_prob, path, testing_lst = [], usePos = True):
   test = {}
   # allows for testing purposes

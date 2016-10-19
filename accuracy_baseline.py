@@ -1,5 +1,7 @@
 from os import listdir
 
+# THIS FILE JUST RETURNS THE PRECISION FOR B, I, O, AND ALL TAGS FOR THE BASELINE.
+
 # training
 path = "nlp_project2_uncertainty/train_modified"
 all_files = listdir(path)
