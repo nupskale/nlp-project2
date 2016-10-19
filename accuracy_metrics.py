@@ -17,8 +17,7 @@ def precision(path, test, specific_tag = ""):
   return correct_predictions / number_of_predictions
 
 # number correct / number of examples in test set
-# TODO: implement (code is currently the same as precision)
-def recall(path, test, specific_tag = ""):
+def recall(path, test):
   number_of_examples = 0.0
   correct_predictions = 0.0
   for filename in test.keys():
@@ -28,13 +27,11 @@ def recall(path, test, specific_tag = ""):
       line = lines[i]
       actual_tag = line.split()[2][0].lower()
       predicted_tag = tags[i]
-      if actual_tag == predicted_tag and specific_tag == "":
-        correct_predictions += 1
-      elif actual_tag == predicted_tag and specific_tag == actual_tag:
-        correct_predictions += 1
-      number_of_examples += 1
+      if predicted_tag != "":
+        if actual_tag == predicted_tag:
+          correct_predictions += 1
+        number_of_examples += 1
   return correct_predictions / number_of_examples
-
 
 # 2 * precision * recall / (precision + recall)
 def fMeasure(p, r):

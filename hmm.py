@@ -17,7 +17,7 @@ where P(ti | ti-1) is the transition probability
 and P(wi | ti) is the lexical generation probability
 """
 
-def getWordAndTransitionProbabilities(path, testing_lst = []):
+def getWordAndTransitionProbabilities(path, testing_lst = [], usePos = True):
   # get counts of transitions and of words
   w_count = {}
   t_count = {"b": {"b": 0, "i": 0, "o": 0, "": 0}, "i": {"b": 0, "i": 0, "o": 0, "": 0}, "o": {"b": 0, "i": 0, "o": 0, "": 0}}
@@ -29,19 +29,16 @@ def getWordAndTransitionProbabilities(path, testing_lst = []):
     for i in range(len(lines)):
       line = lines[i]
       word = line.split()[0].lower()
-      pos = line.split()[1].lower()
-      word = word + " " + pos
+      if usePos:
+        pos = line.split()[1].lower()
+        word = word + " " + pos
       tag = line.split()[2][0].lower()
 
       # get previous
       if i != 0:
         prev_line = lines[i-1].split()
-        # prev_word = prev_line[0].lower()
-        # prev_pos = prev_line[1].lower()
         prev_tag = prev_line[2][0].lower()
       else:
-        # prev_word = ""
-        # prev_pos = ""
         prev_tag = ""
       
       if not word in w_count:
@@ -73,34 +70,47 @@ def getWordAndTransitionProbabilities(path, testing_lst = []):
 #P(t1...tn | w1...wn) = multiply, from 1 to n, P(ti | ti-1) * P(wi | ti)
 we essentially want to see which probability is highest for the three possible tn values: "B", "I", and "O"
 """
-def computeTagProbabilities(assigned_tags, w_prob, t_prob, currProb, line, i):
+def computeTagProbabilities(assigned_tags, w_prob, t_prob, line, i, usePos = True):
   # check for index out of range (meaning first word), or stop if line[i] is end of sentence
   while (i >= 0 and line[i] != "\n"):
     word = line[i].split()[0].lower()
-    pos = line[i].split()[1].lower()
-    word = word + " " + pos
+    if usePos:
+      pos = line[i].split()[1].lower()
+      word = word + " " + pos
+    currProb = {}
     if word in w_prob:
       if i > 0 and line[i-1] != "\n":
         prev_tag = assigned_tags[i-1]
       else:
         prev_tag = ""
       for tag in ["b", "i", "o"]:
-        currProb[tag] *= w_prob[word][tag] * t_prob[tag][prev_tag]
-      if currProb["b"] >= currProb["i"]:
-        assigned_tags[i] = "b"
-      # we do not want an "i" tag if "o" tag precedes it
-      elif currProb["i"] >= currProb["o"] and assigned_tags[i-1] != "o":
-        assigned_tags[i] = "i"
+        currProb[tag] = w_prob[word][tag] * t_prob[tag][prev_tag]
+      # find the max value, and check that no values are equal to each other...
+      if currProb["b"] != currProb["i"] or currProb["b"] != currProb["o"] or currProb["i"] != currProb["o"]:
+        assigned_tags[i] = max(currProb, key=currProb.get)
       else:
-        assigned_tags[i] = "o"
+        # # I saw some cases where w_prob[word][tag] = 1 for a certain tag, but t_prob[tag][prev_tag] = 0
+        # # So this is a test to see if only using w_prob would improve accuracy metrics
+        for tag in ["b", "i", "o"]:
+          currProb[tag] = w_prob[word][tag]
+        if currProb["b"] != currProb["i"] or currProb["b"] != currProb["o"] or currProb["i"] != currProb["o"]:
+          assigned_tags[i] = max(currProb, key=currProb.get)
+        else:
+          for tag in ["b", "i", "o"]:
+            currProb[tag] = t_prob[tag][prev_tag]
+          if currProb["b"] != currProb["i"] or currProb["b"] != currProb["o"] or currProb["i"] != currProb["o"]:
+            assigned_tags[i] = max(currProb, key=currProb.get)
+          # last case, all probabilities are equal... (don't see this as being very likely to happen)
+          else:
+            assigned_tags[i] = ""
     else:
       # TODO: handle unknown words
-      assigned_tags[i] = "o"
+      assigned_tags[i] = ""
     i -= 1
-  return assigned_tags, currProb
+  return assigned_tags
 
 
-def tagLines(w_prob, t_prob, path, testing_lst = []):
+def tagLines(w_prob, t_prob, path, testing_lst = [], usePos = True):
   test = {}
   # allows for testing purposes
   if testing_lst == []:
@@ -110,14 +120,11 @@ def tagLines(w_prob, t_prob, path, testing_lst = []):
     file = open(path + "/" + filename, "r")
     lines = file.readlines()
     file.close()
-    currProb = {"b": 1, "i": 1, "o": 1}
     for i in range(len(lines)):
       line = lines[i]
       # check if newline
-      if line == "\n":
-        currProb = {"b": 1, "i": 1, "o": 1}
-      else:
-        test[filename], currProb = computeTagProbabilities(test[filename], w_prob, t_prob, currProb, lines, i)
+      if line != "\n":
+        test[filename] = computeTagProbabilities(test[filename], w_prob, t_prob, lines, i, usePos)
   return test
 
 # path variables
@@ -125,19 +132,50 @@ train_path = "nlp_project2_uncertainty/train_modified"
 path_private = "nlp_project2_uncertainty/test-private"
 path_public = "nlp_project2_uncertainty/test-public"
 
+# USING WORD + POS
+
 # test the accuracy
-print("Testing accuracy...")
+print("Testing accuracy for word + pos...")
 test_path_list = listdir(train_path)
 training_files = test_path_list[:len(test_path_list) * 3 / 4]
 testing_files = test_path_list[len(test_path_list) * 3 / 4:]
 test_w_prob, test_t_prob = getWordAndTransitionProbabilities(train_path, training_files)
 test_tags = tagLines(test_w_prob, test_t_prob, train_path, testing_files)
-print("Precision for all tags: " + str(am.precision(train_path, test_tags)))
 print("Precision for B tags: " + str(am.precision(train_path, test_tags, "b")))
 print("Precision for I tags: " + str(am.precision(train_path, test_tags, "i")))
 print("Precision for O tags: " + str(am.precision(train_path, test_tags, "o")))
 
-# do the tagging
-w_prob, t_prob = getWordAndTransitionProbabilities(train_path)
-private_tags = tagLines(w_prob, t_prob, path_private)
-public_tags = tagLines(w_prob, t_prob, path_public)
+p = am.precision(train_path, test_tags)
+print("Precision for all tags: " + str(p))
+r = am.recall(train_path, test_tags)
+print("Recall for all tags: " + str(r))
+print("F-measure for all tags: " + str(am.fMeasure(p, r)))
+
+# # do the tagging
+# w_prob, t_prob = getWordAndTransitionProbabilities(train_path)
+# private_tags = tagLines(w_prob, t_prob, path_private)
+# public_tags = tagLines(w_prob, t_prob, path_public)
+
+# USING ONLY WORD
+
+# test the accuracy
+print("Testing accuracy for word (not pos)...")
+test_path_list = listdir(train_path)
+training_files = test_path_list[:len(test_path_list) * 3 / 4]
+testing_files = test_path_list[len(test_path_list) * 3 / 4:]
+test_w_prob, test_t_prob = getWordAndTransitionProbabilities(train_path, training_files, False)
+test_tags = tagLines(test_w_prob, test_t_prob, train_path, testing_files, False)
+print("Precision for B tags: " + str(am.precision(train_path, test_tags, "b")))
+print("Precision for I tags: " + str(am.precision(train_path, test_tags, "i")))
+print("Precision for O tags: " + str(am.precision(train_path, test_tags, "o")))
+
+p = am.precision(train_path, test_tags)
+print("Precision for all tags: " + str(p))
+r = am.recall(train_path, test_tags)
+print("Recall for all tags: " + str(r))
+print("F-measure for all tags: " + str(am.fMeasure(p, r)))
+
+# # do the tagging
+# w_prob, t_prob = getWordAndTransitionProbabilities(train_path, [], False)
+# private_tags = tagLines(w_prob, t_prob, path_private, [], False)
+# public_tags = tagLines(w_prob, t_prob, path_public, [], False)

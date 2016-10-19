@@ -13,22 +13,21 @@ for filename in training_files:
   lines = file.readlines()
   for i in range(len(lines)):
     line = lines[i]
-    word = line.split()[0] + " " + line.split()[1]
-    word = word
-    tag = line.split()[2][0]
+    word = line.split()[0].lower() + " " + line.split()[1].lower()
+    tag = line.split()[2][0].lower()
 
     if word not in train_dict:
       train_dict[word] = {}
-      train_dict[word]["before"] = {"B": [], "I": [], "O": []}
-      train_dict[word]["after"] = {"B": [], "I": [], "O": []}
+      train_dict[word]["before"] = {"b": [], "i": [], "o": []}
+      train_dict[word]["after"] = {"b": [], "i": [], "o": []}
 
     if i > 0:
-      train_dict[word]["before"][tag].append(lines[i-1].split()[0])
+      train_dict[word]["before"][tag].append(lines[i-1].split()[0].lower())
     else:
       train_dict[word]["before"][tag].append("")
 
     if i < len(lines) - 1:
-      train_dict[word]["after"][tag].append(lines[i+1].split()[0])
+      train_dict[word]["after"][tag].append(lines[i+1].split()[0].lower())
     else:
       train_dict[word]["after"][tag].append("")
 
@@ -47,38 +46,38 @@ for filename in testing_files:
     line = lines[i]
     # check if newline
     if line != "\n":
-      word = line.split()[0] + " " + line.split()[1]
+      word = line.split()[0].lower() + " " + line.split()[1].lower()
 
       if word in train_dict:
         before_words = train_dict[word]["before"]
         after_words = train_dict[word]["after"]
 
         if i > 0 and lines[i-1] != "\n":
-          preceding = lines[i-1].split()[0]
+          preceding = lines[i-1].split()[0].lower()
         else:
           preceding = ""
         if i < len(lines) - 2 and lines[i+1] != "\n":
-          following = lines[i+1].split()[0]
+          following = lines[i+1].split()[0].lower()
         else:
           following = ""
 
-        b_count = before_words["B"].count(preceding) + after_words["B"].count(following)
-        i_count = before_words["I"].count(preceding) + after_words["I"].count(following)
-        o_count = before_words["O"].count(preceding) + after_words["O"].count(following)
+        b_count = before_words["b"].count(preceding) + after_words["b"].count(following)
+        i_count = before_words["i"].count(preceding) + after_words["i"].count(following)
+        o_count = before_words["o"].count(preceding) + after_words["o"].count(following)
 
         if b_count > i_count:
-          tag = "B"
+          tag = "b"
         elif b_count > o_count:
-          tag = "B"
+          tag = "i"
         elif i_count > o_count:
-          tag = "I"
+          tag = "i"
         else:
-          tag = "O"
+          tag = "o"
 
       else:
         # todo: handle unknown words
         # print word + " not in train_dict... giving it tag O"
-        tag = "O"
+        tag = "o"
 
       test[filename][i] = tag
 
@@ -92,7 +91,7 @@ for filename in test.keys():
 
   for i in range(len(lines)):
     line = lines[i]
-    actual_tag = line.split()[2][0]
+    actual_tag = line.split()[2][0].lower()
     predicted_tag = tags[i]
     if actual_tag == predicted_tag:
       correct_predictions += 1
@@ -109,10 +108,10 @@ for filename in test.keys():
 
   for i in range(len(lines)):
     line = lines[i]
-    actual_tag = line.split()[2][0]
+    actual_tag = line.split()[2][0].lower()
     predicted_tag = tags[i]
 
-    if actual_tag == "B":
+    if actual_tag == "b":
       if actual_tag == predicted_tag:
         correct_predictions += 1
       number_of_predictions += 1
@@ -128,10 +127,10 @@ for filename in test.keys():
 
   for i in range(len(lines)):
     line = lines[i]
-    actual_tag = line.split()[2][0]
+    actual_tag = line.split()[2][0].lower()
     predicted_tag = tags[i]
 
-    if actual_tag == "I":
+    if actual_tag == "i":
       if actual_tag == predicted_tag:
         correct_predictions += 1
       number_of_predictions += 1
@@ -147,10 +146,10 @@ for filename in test.keys():
 
   for i in range(len(lines)):
     line = lines[i]
-    actual_tag = line.split()[2][0]
+    actual_tag = line.split()[2][0].lower()
     predicted_tag = tags[i]
 
-    if actual_tag == "O":
+    if actual_tag == "o":
       if actual_tag == predicted_tag:
         correct_predictions += 1
       number_of_predictions += 1
