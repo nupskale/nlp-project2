@@ -25,11 +25,18 @@ def precision(path, test, specific_tag = ""):
       line = lines[i]
       actual_tag = line.split()[2][0].lower()
       predicted_tag = tags[i]
-      if actual_tag == predicted_tag and specific_tag == "":
-        correct_predictions += 1
-      elif actual_tag == predicted_tag and specific_tag == actual_tag:
-        correct_predictions += 1
-      number_of_predictions += 1
+
+      # all tags
+      if specific_tag == "":
+        if actual_tag == predicted_tag:
+          correct_predictions += 1
+        number_of_predictions += 1
+      # specific tag
+      else:
+        if specific_tag == actual_tag:
+          if actual_tag == predicted_tag:
+            correct_predictions += 1
+          number_of_predictions += 1
   return correct_predictions / number_of_predictions
 
 """
