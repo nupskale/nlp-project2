@@ -13,6 +13,10 @@ def getTrainList(file_list = []):
     sentence_list = []
     for line in lines:
       word = line.split()[0]
+
+      # # use pos
+      # word = word + line.split()[1]
+
       if '\\' in word:
         word = word.replace('\\', '')
       word = word.decode("unicode_escape")
@@ -39,6 +43,10 @@ def getSentences(path, file_list = []):
     for line in lines:
       if line != "\n":
         word = line.split()[0]
+
+        # # use pos
+        # word = word + line.split()[1]
+
         word = word.decode("unicode_escape")
 
         if word != ".":
@@ -67,53 +75,78 @@ path_public = "nlp_project2_uncertainty/test-public"
 # private_sentences = tagSentences(path_private)
 # public_sentences = tagSentences(path_public)
 
-# for testing
-training_files = listdir(path_train)
-for_training = training_files[:len(training_files) * 3 / 4]
-for_testing = training_files[len(training_files) * 3 / 4:]
-training_sentences = tagSentences(path_train, training_list = for_training, testing_list = for_testing)
+# accuracy
+def precision(path_train):
+  # get file list
+  training_files = listdir(path_train)
+  for_training = training_files[:len(training_files) * 3 / 4]
+  for_testing = training_files[len(training_files) * 3 / 4:]
+  training_sentences = tagSentences(path_train, training_list = for_training, testing_list = for_testing)
 
-# accuracy metrics
-number_of_predictions = 0.0
-correct_predictions = 0.0
-number_of_b = 0.0
-b_prediction = 0.0
-number_of_i = 0.0
-i_prediction = 0.0
-number_of_o = 0.0
-o_prediction = 0.0
-# get correct sentence tag
-test_sentences = getTrainList(for_testing)
-for i in range(len(training_sentences)):
-  train_s = training_sentences[i]
-  actual_s = test_sentences[i]
-  for j in range(len(train_s)):
-    train_w = train_s[j][0]
-    train_t = train_s[j][1]
-    actual_w = actual_s[j][0]
-    actual_t = actual_s[j][1]
+  number_of_predictions = 0.0
+  correct_predictions = 0.0
+  number_of_b = 0.0
+  b_prediction = 0.0
+  number_of_i = 0.0
+  i_prediction = 0.0
+  number_of_o = 0.0
+  o_prediction = 0.0
+  # get correct sentence tag
+  test_sentences = getTrainList(for_testing)
+  for i in range(len(training_sentences)):
+    train_s = training_sentences[i]
+    actual_s = test_sentences[i]
+    for j in range(len(train_s)):
+      train_w = train_s[j][0]
+      train_t = train_s[j][1]
+      actual_w = actual_s[j][0]
+      actual_t = actual_s[j][1]
 
-    # check precision for b tags
-    if actual_t == 'b':
-      if train_t == 'b':
-        b_prediction += 1
-      number_of_b += 1
-    # check precision for i tags
-    if actual_t == 'i':
-      if train_t == 'i':
-        i_prediction += 1
-      number_of_i += 1
-    # check precision for o tags
-    if actual_t == 'o':
-      if train_t == 'o':
-        o_prediction += 1
-      number_of_o += 1
-    # all tags
-    if train_t == actual_t:
-      correct_predictions += 1
-    number_of_predictions += 1
+      if actual_w != train_w:
+        print "indexing got messed up..."
+        return
 
-print("For B - tags:" + str(b_prediction / number_of_b))
-print("For I - tags:" + str(i_prediction / number_of_i))
-print("For O - tags:" + str(o_prediction / number_of_o))
-print("For all tags:" + str(correct_predictions / number_of_predictions))
+      # check precision for b tags
+      if actual_t == 'b':
+        if train_t == 'b':
+          b_prediction += 1
+        number_of_b += 1
+      # check precision for i tags
+      if actual_t == 'i':
+        if train_t == 'i':
+          i_prediction += 1
+        number_of_i += 1
+      # check precision for o tags
+      if actual_t == 'o':
+        if train_t == 'o':
+          o_prediction += 1
+        number_of_o += 1
+      # all tags
+      if train_t == actual_t:
+        correct_predictions += 1
+      number_of_predictions += 1
+
+  if number_of_b == 0:
+    print("For B - tags: there were none detected")
+  else:
+    print("For B - tags: " + str(b_prediction / number_of_b))
+  if number_of_i == 0:
+    print("For I - tags: there were none detected")
+  else:
+    print("For I - tags: " + str(i_prediction / number_of_i))
+  if number_of_o == 0:
+    print("For O - tags: there were none detected")
+  else:
+    print("For O - tags: " + str(o_prediction / number_of_o))
+  if number_of_predictions == 0:
+    print("For all tags: there were none detected")
+  else:
+    print("For all tags: " + str(correct_predictions / number_of_predictions))
+
+  print("is the length of test set == actual set?")
+  print(len(training_sentences) == len(test_sentences))
+  return correct_predictions / number_of_predictions
+
+p = precision(path_train)
+print("-----------------------")
+print("Precision is " + str(p) + " and recall and F-measure will be the same")
