@@ -1,6 +1,6 @@
 from nltk.tag import CRFTagger
 from os import listdir
-import accuracy_metrics as am
+from csv import writer
 
 def getTrainList(file_list = []):
   path = "nlp_project2_uncertainty/train_modified"
@@ -65,15 +65,6 @@ def tagSentences(path, training_list = [], testing_list = []):
   sentences = getSentences(path, testing_list)
   tagged_sentences = ct.tag_sents(sentences)
   return tagged_sentences
-
-# path variables
-path_train = "nlp_project2_uncertainty/train_modified"
-path_private = "nlp_project2_uncertainty/test-private"
-path_public = "nlp_project2_uncertainty/test-public"
-
-# # get sentences
-# private_sentences = tagSentences(path_private)
-# public_sentences = tagSentences(path_public)
 
 # accuracy
 def precision(path_train):
@@ -147,6 +138,65 @@ def precision(path_train):
   print(len(training_sentences) == len(test_sentences))
   return correct_predictions / number_of_predictions
 
-p = precision(path_train)
-print("-----------------------")
-print("Precision is " + str(p) + " and recall and F-measure will be the same")
+# p = precision(path_train)
+# print("-----------------------")
+# print("Precision is " + str(p) + " and recall and F-measure will be the same")
+
+# path variables
+path_train = "nlp_project2_uncertainty/train_modified"
+path_private = "nlp_project2_uncertainty/test-private"
+path_public = "nlp_project2_uncertainty/test-public"
+
+# Kaggle submission
+def cueDetector(tagged_sentences):
+  word_index_cues = ""
+  sent_index_cues = ""
+  cum_word_index = 0
+  for sentence_index in range(len(tagged_sentences)):
+    sentence = tagged_sentences[sentence_index]
+    sentence_flag = False
+    for word_index in range(len(sentence)):
+      tag = sentence[word_index][1]
+      if tag == "b":
+        sentence_flag = True
+        # check if word is not last word
+        if word_index < len(sentence) - 1:
+          # if 'i' is the next cue
+          if sentence[word_index + 1][1] == 'i':
+            word_index_cues += str(cum_word_index) + "-"
+          # if 'i' is not the next cue, index-index
+          else:
+             word_index_cues += str(cum_word_index) + "-" +  str(cum_word_index) + " "
+        else:
+          # word is last word
+          word_index_cues += str(cum_word_index) + "-" +  str(cum_word_index) + " "
+      elif tag == "i":
+        sentence_flag = True
+        # previous cue was not o
+        if word_index > 0 and sentence[word_index - 1][1] != 'o':
+          # next cue is not 'i', or does not exist
+          if word_index == len(sentence) - 1 or (word_index < len(sentence) - 1 and sentence[word_index + 1][1] != 'i'): 
+            word_index_cues += str(cum_word_index) + " "
+      cum_word_index += 1
+    if sentence_flag:
+      sent_index_cues += str(sentence_index) + " "
+  return word_index_cues, sent_index_cues
+
+# # get sentences
+private_sentences = tagSentences(path_private)
+public_sentences = tagSentences(path_public)
+
+private_w_cues, private_s_cues = cueDetector(private_sentences)
+public_w_cues, public_s_cues = cueDetector(public_sentences)
+
+with open("crf_uncertain_phrase_detection.csv", 'w') as file:
+  w = writer(file)
+  w.writerow(["Type", "Spans"])
+  w.writerow(["CUE-public", public_w_cues])
+  w.writerow(["CUE-private", private_w_cues])
+
+with open("crf_uncertain_sentence_detection.csv", "w") as file:
+  w = writer(file)
+  w.writerow(["Type", "Indices"])
+  w.writerow(["SENTENCE-public", public_s_cues])
+  w.writerow(["SENTENCE-private", private_s_cues])

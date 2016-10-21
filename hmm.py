@@ -1,5 +1,6 @@
 from os import listdir
 import accuracy_metrics as am
+from csv import writer
 
 """
 THE LOGIC:
@@ -121,7 +122,6 @@ def computeTagProbabilities(assigned_tags, w_prob, t_prob, line, i, usePos = Tru
           else:
             assigned_tags[i] = ""
     else:
-      # TODO: handle unknown words
       assigned_tags[i] = ""
     i -= 1
   return assigned_tags
@@ -156,10 +156,60 @@ def tagLines(w_prob, t_prob, path, testing_lst = [], usePos = True):
         test[filename] = computeTagProbabilities(test[filename], w_prob, t_prob, lines, i, usePos)
   return test
 
+# Kaggle submission
+def phraseDetectorString(test):
+  cues = ""
+  cum_index_count = 0
+  for filename in test.keys():
+    file_cues = test[filename]
+    for index in file_cues.keys():
+      cue = file_cues[index]
+      # we only add cues indices in these cases:
+      # cue is B
+      if cue == "b":
+        # if I is not the next cue, index-index
+        if (index + 1) in file_cues and file_cues[index + 1] != "i":
+          index += cum_index_count
+          cues += str(index) + "-" + str(index) + " "
+        # next cue is I
+        elif (index + 1) in file_cues and file_cues[index + 1] =="i":
+          index += cum_index_count
+          cues += str(index) + "-"
+      # cue is I
+      elif cue == "i":
+        # previous cue was B or I
+        if (index - 1) in file_cues and (file_cues[index - 1] == "b" or file_cues[index - 1] == "i"):
+          # next cue is not I
+          if (index + 1) in file_cues and (file_cues[index + 1] != "i"):
+            index += cum_index_count
+            cues += str(index) + " "
+    cum_index_count += len(file_cues)
+  return cues
+
+def sentenceDetectorString(test, path):
+  indices = ""
+  cum_sentence_count = 0
+  for filename in test.keys():
+    file_cues = test[filename]
+    sentences = open(path + "/" + filename, "r").readlines()
+    foundCue = False
+    for i in range(len(sentences)):
+      word = sentences[i]
+      if word == "\n":
+        if foundCue:
+          cum_sentence_count += 1
+          indices += str(cum_sentence_count) + " "
+          foundCue = False
+      elif test[filename][i] == "b":
+        foundCue = True
+  return indices
+
+
 # path variables
 train_path = "nlp_project2_uncertainty/train_modified"
 path_private = "nlp_project2_uncertainty/test-private"
 path_public = "nlp_project2_uncertainty/test-public"
+
 
 # USING WORD + POS
 
@@ -180,10 +230,22 @@ r = am.recall(train_path, test_tags)
 print("Recall for all tags: " + str(r))
 print("F-measure for all tags: " + str(am.fMeasure(p, r)))
 
-# # do the tagging
-# w_prob, t_prob = getWordAndTransitionProbabilities(train_path)
-# private_tags = tagLines(w_prob, t_prob, path_private)
-# public_tags = tagLines(w_prob, t_prob, path_public)
+# do the tagging
+w_prob, t_prob = getWordAndTransitionProbabilities(train_path)
+private_tags = tagLines(w_prob, t_prob, path_private)
+public_tags = tagLines(w_prob, t_prob, path_public)
+
+with open("hmm_pos_uncertain_phrase_detection.csv", 'w') as file:
+  w = writer(file)
+  w.writerow(["Type", "Spans"])
+  w.writerow(["CUE-public", phraseDetectorString(public_tags)])
+  w.writerow(["CUE-private", phraseDetectorString(private_tags)])
+
+with open("hmm_pos_baseline_uncertain_sentence_detection.csv", "w") as file:
+  w = writer(file)
+  w.writerow(["Type", "Indices"])
+  w.writerow(["SENTENCE-public", sentenceDetectorString(public_tags, "nlp_project2_uncertainty/test-public")])
+  w.writerow(["SENTENCE-private", sentenceDetectorString(private_tags, "nlp_project2_uncertainty/test-private")])
 
 # USING ONLY WORD
 
@@ -204,7 +266,19 @@ r = am.recall(train_path, test_tags)
 print("Recall for all tags: " + str(r))
 print("F-measure for all tags: " + str(am.fMeasure(p, r)))
 
-# # do the tagging
-# w_prob, t_prob = getWordAndTransitionProbabilities(train_path, [], False)
-# private_tags = tagLines(w_prob, t_prob, path_private, [], False)
-# public_tags = tagLines(w_prob, t_prob, path_public, [], False)
+# do the tagging
+w_prob, t_prob = getWordAndTransitionProbabilities(train_path, [], False)
+private_tags = tagLines(w_prob, t_prob, path_private, [], False)
+public_tags = tagLines(w_prob, t_prob, path_public, [], False)
+
+with open("hmm_uncertain_phrase_detection.csv", 'w') as file:
+  w = writer(file)
+  w.writerow(["Type", "Spans"])
+  w.writerow(["CUE-public", phraseDetectorString(public_tags)])
+  w.writerow(["CUE-private", phraseDetectorString(private_tags)])
+
+with open("hmm_uncertain_sentence_detection.csv", "w") as file:
+  w = writer(file)
+  w.writerow(["Type", "Indices"])
+  w.writerow(["SENTENCE-public", sentenceDetectorString(public_tags, "nlp_project2_uncertainty/test-public")])
+  w.writerow(["SENTENCE-private", sentenceDetectorString(private_tags, "nlp_project2_uncertainty/test-private")])

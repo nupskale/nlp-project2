@@ -178,13 +178,13 @@ def sentenceDetectorString(test, path):
         foundCue = True
   return indices
 
-with open("uncertain_phrase_detection.csv", 'w') as file:
+with open("baseline_uncertain_phrase_detection.csv", 'w') as file:
   w = writer(file)
   w.writerow(["Type", "Spans"])
   w.writerow(["CUE-public", phraseDetectorString(test_public)])
   w.writerow(["CUE-private", phraseDetectorString(test_private)])
 
-with open("uncertain_sentence_detection.csv", "w") as file:
+with open("baseline_uncertain_sentence_detection.csv", "w") as file:
   w = writer(file)
   w.writerow(["Type", "Indices"])
   w.writerow(["SENTENCE-public", sentenceDetectorString(test_public, "nlp_project2_uncertainty/test-public")])
