@@ -2,6 +2,7 @@ import nltk
 import numpy as np
 from os import listdir
 from nltk.corpus import treebank
+from nltk.tag import hmm
 
 def getTrainList(file_list = []):
   path = "nlp_project2_uncertainty/train_modified"
@@ -28,20 +29,11 @@ def getTrainList(file_list = []):
     file.close()
   return train_list
 
-train_data = getTrainList()
-
-from nltk.tag import hmm
-#hmm trainer
-trainer = hmm.HiddenMarkovModelTrainer()
-#training hmm tagger
-tagger = trainer.train_supervised(train_data)
-
-print tagger
-
 #function for generating sentences as string (format accepted by tagger)
-def getSentences(path):
+def getSentences(path, file_list = []):
   sentence_list = []
-  file_list = listdir(path)
+  if file_list == []:
+    file_list = listdir(path)
   for filename in file_list:
     file = open(path + "/" + filename, "r")
     lines = file.readlines()
@@ -53,13 +45,87 @@ def getSentences(path):
     sentence_str = ' '.join(sentence_list)
   return sentence_str
 
-#sentences generated for test private folder
-test_private = getSentences('nlp_project2_uncertainty/test-private')
-#sentences generated for test public folder
-test_public = getSentences('nlp_project2_uncertainty/test-public')
+# accuracy
+def precision(path_train):
+  # get file list
+  training_files = listdir(path_train)
+  for_training = training_files[:len(training_files) * 3 / 4]
+  for_testing = training_files[len(training_files) * 3 / 4:]
+  training_sentences = tagSentences(path_train, training_list = for_training, testing_list = for_testing)
 
-#BIO tags assigned to test private sentences, returns list of word and tag
-test_private_tags = tagger.tag(test_private.split())
+  number_of_predictions = 0.0
+  correct_predictions = 0.0
+  number_of_b = 0.0
+  b_prediction = 0.0
+  number_of_i = 0.0
+  i_prediction = 0.0
+  number_of_o = 0.0
+  o_prediction = 0.0
+  # get correct sentence tag
+  test_sentences = getTrainList(for_testing)
+  for i in range(len(training_sentences)):
+    train_s = training_sentences[i]
+    actual_s = test_sentences[i]
+    for j in range(len(train_s)):
+      train_w = train_s[j][0]
+      train_t = train_s[j][1]
+      actual_w = actual_s[j][0]
+      actual_t = actual_s[j][1]
 
-#BIO tags assigned to test public sentences, returns list of word and tag
-test_public_tags = tagger.tag(test_public.split())
+      if actual_w != train_w:
+        print "indexing got messed up..."
+        return
+
+      # check precision for b tags
+      if actual_t == 'b':
+        if train_t == 'b':
+          b_prediction += 1
+        number_of_b += 1
+      # check precision for i tags
+      if actual_t == 'i':
+        if train_t == 'i':
+          i_prediction += 1
+        number_of_i += 1
+      # check precision for o tags
+      if actual_t == 'o':
+        if train_t == 'o':
+          o_prediction += 1
+        number_of_o += 1
+      # all tags
+      if train_t == actual_t:
+        correct_predictions += 1
+      number_of_predictions += 1
+
+  if number_of_b == 0:
+    print("For B - tags: there were none detected")
+  else:
+    print("For B - tags: " + str(b_prediction / number_of_b))
+  if number_of_i == 0:
+    print("For I - tags: there were none detected")
+  else:
+    print("For I - tags: " + str(i_prediction / number_of_i))
+  if number_of_o == 0:
+    print("For O - tags: there were none detected")
+  else:
+    print("For O - tags: " + str(o_prediction / number_of_o))
+  if number_of_predictions == 0:
+    print("For all tags: there were none detected")
+  else:
+    print("For all tags: " + str(correct_predictions / number_of_predictions))
+
+  print("is the length of test set == actual set?")
+  print(len(training_sentences) == len(test_sentences))
+  return correct_predictions / number_of_predictions
+
+def tagSentences(path, training_list = [], testing_list = []):
+  trainer = hmm.HiddenMarkovModelTrainer()
+  train_data = getTrainList(training_list)
+  tagger = trainer.train_supervised(train_data)
+  sentences = getSentences(path, testing_list)
+  tagged_sentences = tagger.tag(sentences.split())
+  return tagged_sentences
+
+# for precision calculations
+path_train = "nlp_project2_uncertainty/train_modified"
+p = precision(path_train) 
+print p
