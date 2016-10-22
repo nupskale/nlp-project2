@@ -160,46 +160,46 @@ def tagLines(w_prob, t_prob, path, testing_lst = [], usePos = True):
 def phraseDetectorString(test):
   cues = ""
   cum_index_count = 0
-  for filename in test.keys():
+  for filename in sorted(test.keys()):
     file_cues = test[filename]
-    for index in file_cues.keys():
+    for index in sorted(file_cues.keys()):
       cue = file_cues[index]
-      # we only add cues indices in these cases:
-      # cue is B
       if cue == "b":
-        # if I is not the next cue, index-index
+        # if I is not next cue, index-index
         if (index + 1) in file_cues and file_cues[index + 1] != "i":
-          index += cum_index_count
-          cues += str(index) + "-" + str(index) + " "
-        # next cue is I
-        elif (index + 1) in file_cues and file_cues[index + 1] =="i":
-          index += cum_index_count
-          cues += str(index) + "-"
-      # cue is I
+          cues += str(index + cum_index_count) + "-" + str(index + cum_index_count) + " "
+        # next cue is i
+        elif (index + 1) in file_cues and file_cues[index + 1] == "i":
+          cues += str(index + cum_index_count) + "-"
+        # this word is the last word in file
+        elif not (index + 1) in file_cues:
+          cues += str(index + cum_index_count) + "-" + str(index + cum_index_count) + " "
       elif cue == "i":
-        # previous cue was B or I
-        if (index - 1) in file_cues and (file_cues[index - 1] == "b" or file_cues[index - 1] == "i"):
-          # next cue is not I
-          if (index + 1) in file_cues and (file_cues[index + 1] != "i"):
-            index += cum_index_count
-            cues += str(index) + " "
-    cum_index_count += len(file_cues)
+        # previous cue was B or I, which means we have a '-' as the last character in cues
+        if (index - 1) in file_cues and len(cues) != 0 and cues[len(cues) - 1] == '-':
+          # next cue is not i
+          if (index + 1) in file_cues and file_cues[index + 1] != 'i':
+            cues += str(index + cum_index_count) + " "
+          # no word after it
+          elif not (index + 1) in file_cues:
+            cues += str(index + cum_index_count) + " "
+    cum_index_count += max(file_cues.keys())
   return cues
 
 def sentenceDetectorString(test, path):
   indices = ""
   cum_sentence_count = 0
-  for filename in test.keys():
+  for filename in sorted(test.keys()):
     file_cues = test[filename]
-    sentences = open(path + "/" + filename, "r").readlines()
+    lines = open(path + "/" + filename, "r").readlines()
     foundCue = False
-    for i in range(len(sentences)):
-      word = sentences[i]
-      if word == "\n":
+    for i in range(len(lines)):
+      line = lines[i]
+      if line == "\n":
         if foundCue:
-          cum_sentence_count += 1
           indices += str(cum_sentence_count) + " "
           foundCue = False
+        cum_sentence_count += 1
       elif test[filename][i] == "b":
         foundCue = True
   return indices
@@ -211,24 +211,24 @@ path_private = "nlp_project2_uncertainty/test-private"
 path_public = "nlp_project2_uncertainty/test-public"
 
 
-# USING WORD + POS
+# # USING WORD + POS
 
-# test the accuracy
-print("Testing accuracy for word + pos...")
-test_path_list = listdir(train_path)
-training_files = test_path_list[:len(test_path_list) * 3 / 4]
-testing_files = test_path_list[len(test_path_list) * 3 / 4:]
-test_w_prob, test_t_prob = getWordAndTransitionProbabilities(train_path, training_files)
-test_tags = tagLines(test_w_prob, test_t_prob, train_path, testing_files)
-print("Precision for B tags: " + str(am.precision(train_path, test_tags, "b")))
-print("Precision for I tags: " + str(am.precision(train_path, test_tags, "i")))
-print("Precision for O tags: " + str(am.precision(train_path, test_tags, "o")))
+# # test the accuracy
+# print("Testing accuracy for word + pos...")
+# test_path_list = listdir(train_path)
+# training_files = test_path_list[:len(test_path_list) * 3 / 4]
+# testing_files = test_path_list[len(test_path_list) * 3 / 4:]
+# test_w_prob, test_t_prob = getWordAndTransitionProbabilities(train_path, training_files)
+# test_tags = tagLines(test_w_prob, test_t_prob, train_path, testing_files)
+# print("Precision for B tags: " + str(am.precision(train_path, test_tags, "b")))
+# print("Precision for I tags: " + str(am.precision(train_path, test_tags, "i")))
+# print("Precision for O tags: " + str(am.precision(train_path, test_tags, "o")))
 
-p = am.precision(train_path, test_tags)
-print("Precision for all tags: " + str(p))
-r = am.recall(train_path, test_tags)
-print("Recall for all tags: " + str(r))
-print("F-measure for all tags: " + str(am.fMeasure(p, r)))
+# p = am.precision(train_path, test_tags)
+# print("Precision for all tags: " + str(p))
+# r = am.recall(train_path, test_tags)
+# print("Recall for all tags: " + str(r))
+# print("F-measure for all tags: " + str(am.fMeasure(p, r)))
 
 # do the tagging
 w_prob, t_prob = getWordAndTransitionProbabilities(train_path)
@@ -241,30 +241,30 @@ with open("hmm_pos_uncertain_phrase_detection.csv", 'w') as file:
   w.writerow(["CUE-public", phraseDetectorString(public_tags)])
   w.writerow(["CUE-private", phraseDetectorString(private_tags)])
 
-with open("hmm_pos_baseline_uncertain_sentence_detection.csv", "w") as file:
+with open("hmm_pos_uncertain_sentence_detection.csv", "w") as file:
   w = writer(file)
   w.writerow(["Type", "Indices"])
   w.writerow(["SENTENCE-public", sentenceDetectorString(public_tags, "nlp_project2_uncertainty/test-public")])
   w.writerow(["SENTENCE-private", sentenceDetectorString(private_tags, "nlp_project2_uncertainty/test-private")])
 
-# USING ONLY WORD
+# # USING ONLY WORD
 
-# test the accuracy
-print("Testing accuracy for word (not pos)...")
-test_path_list = listdir(train_path)
-training_files = test_path_list[:len(test_path_list) * 3 / 4]
-testing_files = test_path_list[len(test_path_list) * 3 / 4:]
-test_w_prob, test_t_prob = getWordAndTransitionProbabilities(train_path, training_files, False)
-test_tags = tagLines(test_w_prob, test_t_prob, train_path, testing_files, False)
-print("Precision for B tags: " + str(am.precision(train_path, test_tags, "b")))
-print("Precision for I tags: " + str(am.precision(train_path, test_tags, "i")))
-print("Precision for O tags: " + str(am.precision(train_path, test_tags, "o")))
+# # test the accuracy
+# print("Testing accuracy for word (not pos)...")
+# test_path_list = listdir(train_path)
+# training_files = test_path_list[:len(test_path_list) * 3 / 4]
+# testing_files = test_path_list[len(test_path_list) * 3 / 4:]
+# test_w_prob, test_t_prob = getWordAndTransitionProbabilities(train_path, training_files, False)
+# test_tags = tagLines(test_w_prob, test_t_prob, train_path, testing_files, False)
+# print("Precision for B tags: " + str(am.precision(train_path, test_tags, "b")))
+# print("Precision for I tags: " + str(am.precision(train_path, test_tags, "i")))
+# print("Precision for O tags: " + str(am.precision(train_path, test_tags, "o")))
 
-p = am.precision(train_path, test_tags)
-print("Precision for all tags: " + str(p))
-r = am.recall(train_path, test_tags)
-print("Recall for all tags: " + str(r))
-print("F-measure for all tags: " + str(am.fMeasure(p, r)))
+# p = am.precision(train_path, test_tags)
+# print("Precision for all tags: " + str(p))
+# r = am.recall(train_path, test_tags)
+# print("Recall for all tags: " + str(r))
+# print("F-measure for all tags: " + str(am.fMeasure(p, r)))
 
 # do the tagging
 w_prob, t_prob = getWordAndTransitionProbabilities(train_path, [], False)

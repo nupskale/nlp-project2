@@ -134,46 +134,46 @@ test_public = tagLines(path_public)
 def phraseDetectorString(test):
   cues = ""
   cum_index_count = 0
-  for filename in test.keys():
+  for filename in sorted(test.keys()):
     file_cues = test[filename]
-    for index in file_cues.keys():
+    for index in sorted(file_cues.keys()):
       cue = file_cues[index]
-      # we only add cues indices in these cases:
-      # cue is B
       if cue == "B":
-        # if I is not the next cue, index-index
+        # if I is not next cue, index-index
         if (index + 1) in file_cues and file_cues[index + 1] != "I":
-          index += cum_index_count
-          cues += str(index) + "-" + str(index) + " "
-        # next cue is I
-        elif (index + 1) in file_cues and file_cues[index + 1] =="I":
-          index += cum_index_count
-          cues += str(index) + "-"
-      # cue is I
+          cues += str(index + cum_index_count) + "-" + str(index + cum_index_count) + " "
+        # next cue is i
+        elif (index + 1) in file_cues and file_cues[index + 1] == "I":
+          cues += str(index + cum_index_count) + "-"
+        # this word is the last word in file
+        elif not (index + 1) in file_cues:
+          cues += str(index + cum_index_count) + "-" + str(index + cum_index_count) + " "
       elif cue == "I":
-        # previous cue was B or I
-        if (index - 1) in file_cues and (file_cues[index - 1] == "B" or file_cues[index - 1] == "I"):
-          # next cue is not I
-          if (index + 1) in file_cues and (file_cues[index + 1] != "I"):
-            index += cum_index_count
-            cues += str(index) + " "
-    cum_index_count += len(file_cues)
+        # previous cue was B or I, which means we have a '-' as the last character in cues
+        if (index - 1) in file_cues and len(cues) != 0 and cues[len(cues) - 1] == '-':
+          # next cue is not i
+          if (index + 1) in file_cues and file_cues[index + 1] != 'I':
+            cues += str(index + cum_index_count) + " "
+          # no word after it
+          elif not (index + 1) in file_cues:
+            cues += str(index + cum_index_count) + " "
+    cum_index_count += max(file_cues.keys())
   return cues
 
 def sentenceDetectorString(test, path):
   indices = ""
   cum_sentence_count = 0
-  for filename in test.keys():
+  for filename in sorted(test.keys()):
     file_cues = test[filename]
-    sentences = open(path + "/" + filename, "r").readlines()
+    lines = open(path + "/" + filename, "r").readlines()
     foundCue = False
-    for i in range(len(sentences)):
-      word = sentences[i]
-      if word == "\n":
+    for i in range(len(lines)):
+      line = lines[i]
+      if line == "\n":
         if foundCue:
-          cum_sentence_count += 1
           indices += str(cum_sentence_count) + " "
           foundCue = False
+        cum_sentence_count += 1
       elif test[filename][i] == "B":
         foundCue = True
   return indices
